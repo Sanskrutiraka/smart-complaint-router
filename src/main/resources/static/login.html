@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+
+  <!-- Bootstrap CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <style>
+    body {
+      /* soft professional gradient background */
+      background-color: #eef3f9; /* solid, soft, professional */
+    }
+
+    .login-card {
+      border-radius: 12px;
+      border: none;
+      background: #ffffff;
+    }
+
+    .login-header {
+      border-bottom: 2px solid #e9eef5;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+    }
+
+    .btn-soft {
+      background-color: #4f6bed; /* same blue */
+      border: none;
+    }
+
+    .btn-soft:hover {
+      background-color: #425cd6;
+    }
+
+    .form-control:focus {
+      border-color: #4f6bed;
+      box-shadow: 0 0 0 0.15rem rgba(79, 107, 237, 0.25);
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container vh-100 d-flex justify-content-center align-items-center">
+  <div class="card login-card shadow-sm p-4" style="width: 380px;">
+
+    <div class="login-header text-center">
+      <h4 class="fw-semibold mb-0">User Login</h4>
+      <small class="text-muted">Smart Complaint Router</small>
+    </div>
+
+    <form id="loginForm">
+      <div class="mb-3">
+        <input
+          id="email"
+          type="email"
+          class="form-control"
+          placeholder="Email address"
+          required
+        >
+      </div>
+
+      <div class="mb-3">
+        <input
+          id="password"
+          type="password"
+          class="form-control"
+          placeholder="Password"
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-soft w-100 text-white">
+        Login
+      </button>
+    </form>
+
+    <p id="result" class="text-danger text-center mt-3"></p>
+
+  </div>
+</div>
+
+<script>
+document.getElementById("loginForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const resultEl = document.getElementById("result");
+    resultEl.innerText = "";
+
+    const credentials = {
+        email: document.getElementById("email").value.trim(),
+        password: document.getElementById("password").value.trim()
+    };
+
+    fetch("http://localhost:8086/api/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials)
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Invalid credentials");
+        return res.json();
+    })
+    .then(user => {
+        user.role = user.role.toUpperCase();
+        localStorage.setItem("user", JSON.stringify(user));
+
+        if (user.role === "ADMIN") {
+            window.location.href = "admin.html";
+        } else {
+            window.location.href = "complaint.html";
+        }
+    })
+    .catch(() => {
+        resultEl.innerText = "Invalid email or password";
+    });
+});
+</script>
+
+</body>
+</html>
