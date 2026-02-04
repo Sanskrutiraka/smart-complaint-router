@@ -73,9 +73,11 @@ SmartComplaintRouter
 ---
 
 ### 1️. Clone the Repository
+
 ```bash
 git clone https://github.com/your-username/smart-complaint-router.git
 cd smart-complaint-router
+```
 
 ---
 
@@ -83,21 +85,29 @@ cd smart-complaint-router
 
 # Create a MySQL database:
 
+```bash
 CREATE DATABASE smart_complaint_router;
+```
 
 # Update application.properties :
 
+```bash
 spring.datasource.url=jdbc:mysql://localhost:3306/smart_complaint_router
 spring.datasource.username=your_username
 spring.datasource.password=your_password
+```
 
 ### 3. Run Backend (Spring Boot)
 
+```bash
 mvc spring-boot:run
+```
 
 # Backend will start at - 
 
+```bash
 http://localhost:8086
+```
 
 ### 4. Run Frontend 
 
@@ -109,7 +119,7 @@ register.html
 
 --- 
 
-## Future Enhancements
+### 🛠️ Future Enhancements
 
 JWT authentication
 
@@ -122,9 +132,10 @@ Cloud deployment (AWS / Render / Railway)
 ---
 
 
-## 👤 Author
+### 👤 Author
 
 Sanskruti Raka
+
 Backend Developer | Java | Spring Boot
 
 
@@ -139,3 +150,5 @@ git status
 git add README.md
 git commit -m "Add project README"
 git push
+
+```
