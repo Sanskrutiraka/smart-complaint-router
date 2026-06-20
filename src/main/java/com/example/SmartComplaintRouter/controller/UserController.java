@@ -8,8 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import com.example.SmartComplaintRouter.dto.RegisterRequest;
 
-
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -19,17 +20,33 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    // ---------------- LOGIN (UNCHANGED) ----------------
+    // ---------------- LOGIN ----------------
     @PostMapping("/login")
-    public User login(@RequestBody LoginRequest loginRequest) {
+    public Map<String, Object> login(@RequestBody LoginRequest loginRequest) {
+
         User user = userService.getUserByEmail(loginRequest.getEmail());
 
         if (user == null || !user.getPassword().equals(loginRequest.getPassword())) {
             throw new RuntimeException("Invalid credentials");
         }
 
-        return user;
+        // ✅ create session token
+        String token = java.util.UUID.randomUUID().toString();
+
+        // ✅ store session
+        userService.storeSession(user.getEmail(), token);
+
+        // ✅ send clean response (DO NOT modify user object)
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("name", user.getName());
+        response.put("email", user.getEmail());
+        response.put("role", user.getRole());
+        response.put("sessionToken", token);
+
+        return response;
     }
+
 
     // ---------------- REGISTER NEW USER ----------------
 
@@ -72,8 +89,4 @@ public class UserController {
         userService.deleteUser(id);
     }
 
-    @GetMapping("/test")
-    public String test() {
-        return "USER CONTROLLER WORKING";
-    }
 }

@@ -32,6 +32,14 @@ public class Complaint {
     @OneToOne(mappedBy = "complaint", cascade = CascadeType.ALL)
     @JsonIgnore
     private RoutingLog routingLog;
+    
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private ComplaintCategory category;
+    
+    @Column(name = "assigned_department")
+    private String assignedDepartment;
+
 
     // Constructors
     public Complaint() {}
@@ -80,4 +88,22 @@ public class Complaint {
         this.routingLog = routingLog;
         routingLog.setComplaint(this);
     }
+    
+    public ComplaintCategory getCategory() {
+        return category;
+    }
+
+    public void setCategory(ComplaintCategory category) {
+        this.category = category;
+    }
+    
+    public String getAssignedDepartment() {
+        return assignedDepartment;
+    }
+
+    public void setAssignedDepartment(String assignedDepartment) {
+        this.assignedDepartment = assignedDepartment;
+    }
+
+
 }

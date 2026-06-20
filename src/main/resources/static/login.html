@@ -28,7 +28,7 @@
     }
 
     .btn-soft {
-      background-color: #4f6bed; /* same blue */
+      background-color: #4f6bed;
       border: none;
     }
 
@@ -73,6 +73,13 @@
           required
         >
       </div>
+      <div class="form-check mb-3">
+  		<input class="form-check-input" type="checkbox" id="showPassword">
+ 		<label class="form-check-label" for="showPassword">
+    		Show password
+  		</label>
+	  </div>
+      
 
       <button type="submit" class="btn btn-soft w-100 text-white">
         Login
@@ -85,6 +92,8 @@
 </div>
 
 <script>
+localStorage.removeItem("user"); 
+
 document.getElementById("loginForm").addEventListener("submit", function(e) {
     e.preventDefault();
 
@@ -105,9 +114,17 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
         if (!res.ok) throw new Error("Invalid credentials");
         return res.json();
     })
-    .then(user => {
-        user.role = user.role.toUpperCase();
-        localStorage.setItem("user", JSON.stringify(user));
+    .then(data => {
+
+    const user = {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        role: data.role.toUpperCase(),
+        sessionToken: data.sessionToken
+    };
+
+    localStorage.setItem("user", JSON.stringify(user));
 
         if (user.role === "ADMIN") {
             window.location.href = "admin.html";
@@ -115,10 +132,24 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
             window.location.href = "complaint.html";
         }
     })
-    .catch(() => {
-        resultEl.innerText = "Invalid email or password";
+    .catch(async (err) => {
+        resultEl.style.color = "red";
+
+        if (err instanceof Response) {
+            const data = await err.json();
+            resultEl.innerText = data.message || "Login failed";
+        } else {
+            resultEl.innerText = "Invalid email or password";
+        }
     });
+
 });
+
+document.getElementById("showPassword").addEventListener("change", function () {
+	  const pwd = document.getElementById("password");
+	  pwd.type = this.checked ? "text" : "password";
+	});
+
 </script>
 
 </body>

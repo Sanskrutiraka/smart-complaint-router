@@ -33,7 +33,7 @@ let allComplaints = [];
 let currentFilter = "pending";
 
 
-// ---------- NORMALIZER (IMPORTANT FIX) ----------
+// ---------- NORMALIZER ----------
 function normalizeStatus(status) {
   return (status || "").toString().toLowerCase();
 }
@@ -41,21 +41,22 @@ function normalizeStatus(status) {
 
 // ---------- INITIAL LOAD ----------
 loadAllComplaints();
+loadCategories();
 
 
-// ---------- LOAD ALL ----------
+// ---------- LOAD COMPLAINTS ----------
 function loadAllComplaints() {
-  fetch(API)
-    .then(res => {
-      if (!res.ok) throw new Error("Failed to load complaints");
-      return res.json();
-    })
+	fetch(API, {
+	  headers: {
+	    "X-SESSION-TOKEN": user.sessionToken
+	  }
+	})
+    .then(res => res.json())
     .then(data => {
       allComplaints = Array.isArray(data) ? data : [];
       updateCounts();
       renderByFilter("pending");
-    })
-    .catch(() => alert("Failed to load complaints"));
+    });
 }
 
 
@@ -81,11 +82,11 @@ function renderByFilter(status) {
 }
 
 
-// ---------- RENDER ----------
+// ---------- TABLE ----------
 function renderTable(data) {
   tbody.innerHTML = "";
 
-  if (!Array.isArray(data) || data.length === 0) {
+  if (!data.length) {
     tbody.innerHTML =
       "<tr><td colspan='6'>No complaints found</td></tr>";
     return;
@@ -100,13 +101,12 @@ function renderTable(data) {
         <td>${c.status}</td>
         <td>${c.submittedAt}</td>
         <td>${getActionButtons(c)}</td>
-      </tr>
-    `;
+      </tr>`;
   });
 }
 
 
-// ---------- ACTION BUTTON LOGIC ----------
+// ---------- ACTION BUTTONS ----------
 function getActionButtons(c) {
   const status = normalizeStatus(c.status);
   let buttons = "";
@@ -115,15 +115,12 @@ function getActionButtons(c) {
     buttons += actionBtn(c.id, "APPROVED");
     buttons += actionBtn(c.id, "REJECTED");
     buttons += actionBtn(c.id, "RESOLVED");
-  } 
-  else if (status === "approved") {
+  } else if (status === "approved") {
     buttons += actionBtn(c.id, "RESOLVED");
     buttons += actionBtn(c.id, "REJECTED");
-  } 
-  else if (status === "rejected") {
+  } else if (status === "rejected") {
     buttons += actionBtn(c.id, "APPROVED");
-  } 
-  else if (status === "resolved") {
+  } else if (status === "resolved") {
     buttons += actionBtn(c.id, "APPROVED");
   }
 
@@ -137,45 +134,110 @@ function actionBtn(id, status) {
 
 // ---------- UPDATE STATUS ----------
 function updateStatus(id, status) {
-  fetch(`${API}/${id}/status?status=${status}`, { method: "PUT" })
-    .then(res => {
-      if (!res.ok) throw new Error("Update failed");
+
+  fetch(`${API}/update-status/${id}?status=${status}&adminName=${encodeURIComponent(user.name)}`, {
+      method: "PUT",
+      headers: {
+          "X-SESSION-TOKEN": user.sessionToken
+      }
+  })
+  .then(res => {
+      if (!res.ok) throw new Error("Failed to update status");
       return res.json();
-    })
-    .then(updated => {
+  })
+  .then(updated => {
+
       allComplaints = allComplaints.map(c =>
-        c.id === updated.id ? updated : c
+          c.id === updated.id ? updated : c
       );
 
       updateCounts();
       renderByFilter(currentFilter);
-    })
-    .catch(() => alert("Failed to update status"));
+  })
+  .catch(err => {
+      console.error("Status update failed:", err);
+      alert("Action failed");
+  });
 }
 
 
 // ---------- COUNTS ----------
 function updateCounts() {
-  document.getElementById("totalCount").innerText =
-    allComplaints.length;
-
+  document.getElementById("totalCount").innerText = allComplaints.length;
   document.getElementById("pendingCount").innerText =
     allComplaints.filter(c => normalizeStatus(c.status) === "pending").length;
-
   document.getElementById("approvedCount").innerText =
     allComplaints.filter(c => normalizeStatus(c.status) === "approved").length;
-
   document.getElementById("resolvedCount").innerText =
     allComplaints.filter(c => normalizeStatus(c.status) === "resolved").length;
-
   document.getElementById("rejectedCount").innerText =
     allComplaints.filter(c => normalizeStatus(c.status) === "rejected").length;
 }
 
 
-// ---------- FILTER BUTTON HOOKS ----------
+// ---------- FILTER BUTTONS ----------
 function showAll() { renderByFilter("all"); }
 function showPending() { renderByFilter("pending"); }
 function showApproved() { renderByFilter("approved"); }
 function showResolved() { renderByFilter("resolved"); }
 function showRejected() { renderByFilter("rejected"); }
+
+
+// CATEGORY MANAGEMENT
+
+function loadCategories() {
+  fetch("http://localhost:8086/api/categories")
+    .then(res => res.json())
+    .then(categories => {
+
+      const table = document.getElementById("categoryTableBody");
+      table.innerHTML = "";
+
+      categories.forEach(cat => {
+        table.innerHTML += `
+          <tr>
+            <td>${cat.id}</td>
+            <td>${cat.name}</td>
+            <td>
+              ${cat.active
+                ? '<span class="badge bg-success">Active</span>'
+                : '<span class="badge bg-secondary">Disabled</span>'}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-warning"
+                onclick="toggleCategory(${cat.id}, ${!cat.active})">
+                ${cat.active ? "Disable" : "Enable"}
+              </button>
+            </td>
+          </tr>`;
+      });
+    });
+}
+
+function addCategory() {
+  const name = document.getElementById("newCategoryName").value.trim();
+
+  if (!name) {
+    alert("Enter subject name");
+    return;
+  }
+
+  fetch(`http://localhost:8086/api/categories?name=${encodeURIComponent(name)}`, {
+    method: "POST"
+  })
+    .then(res => {
+      if (!res.ok) throw new Error();
+      return res.json();
+    })
+    .then(() => {
+      document.getElementById("newCategoryName").value = "";
+      loadCategories();
+    })
+    .catch(() => alert("Category already exists"));
+}
+
+function toggleCategory(id, active) {
+  fetch(`http://localhost:8086/api/categories/${id}/status?active=${active}`, {
+    method: "PUT"
+  }).then(() => loadCategories());
+}

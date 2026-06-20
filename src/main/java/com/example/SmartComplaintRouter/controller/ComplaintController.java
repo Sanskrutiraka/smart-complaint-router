@@ -4,16 +4,15 @@ import com.example.SmartComplaintRouter.model.Complaint;
 import com.example.SmartComplaintRouter.model.User;
 import com.example.SmartComplaintRouter.service.ComplaintService;
 import com.example.SmartComplaintRouter.service.UserService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
 
-@CrossOrigin(
-	    origins = "http://localhost:8086",
-	    methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE}
-	)
+@CrossOrigin(origins = "*") // safer for deployment phase
 @RestController
 @RequestMapping("/api/complaints")
 public class ComplaintController {
@@ -22,29 +21,44 @@ public class ComplaintController {
     private ComplaintService complaintService;
 
     @Autowired
-    private UserService userService; // ✅ REQUIRED
+    private UserService userService;
 
-    // ✅ Submit complaint WITH logged-in user
-    @PostMapping("/submit")
+
+    // ================= SUBMIT COMPLAINT =================
+    @PostMapping(value = "/submit", consumes = "multipart/form-data")
     public Complaint submitComplaint(
-            @RequestBody Complaint complaint,
-            @RequestParam String email
-    ) {
-        System.out.println("EMAIL FROM REQUEST = " + email);
 
-        User user = userService.getUserByEmail(email);
-        if (user == null) {
-            throw new RuntimeException("User not found");
+            @RequestParam("description") String description,
+            @RequestParam("categoryId") Long categoryId,
+            @RequestParam(value = "image", required = false) MultipartFile image,
+            @RequestHeader("X-SESSION-TOKEN") String token
+    ) {
+
+        if (token == null || token.isBlank()) {
+            throw new RuntimeException("Session expired. Please login again.");
         }
 
-        // Attach ONLY user ID (clean & safe)
-        User refUser = new User();
-        refUser.setId(user.getId());
-        complaint.setUser(refUser);
+        User user = userService.getUserByToken(token);
 
-        return complaintService.submitComplaint(complaint);
+        if (user == null) {
+            throw new RuntimeException("Invalid session");
+        }
+
+        // Admin restriction
+        if (!"user".equalsIgnoreCase(user.getRole())) {
+            throw new RuntimeException("Admins cannot submit complaints");
+        }
+
+        return complaintService.submitComplaint(
+                description,
+                categoryId,
+                image,
+                user.getId()
+        );
     }
 
+
+    // ================= CRUD =================
 
     @GetMapping
     public List<Complaint> getAllComplaints() {
@@ -60,31 +74,40 @@ public class ComplaintController {
     public void deleteComplaint(@PathVariable Long id) {
         complaintService.deleteComplaint(id);
     }
-    
-    // Get complaints of a specific user
-    @GetMapping("/user/{userId}")
-    public List<Complaint> getComplaintsByUser(@PathVariable Long userId) {
-        User user = new User();
-        user.setId(userId);
-        return complaintService.getComplaintsByUser(user);
-    }
-    
-    @PutMapping("/{id}/status")
-    public Complaint updateComplaintStatus(
-            @PathVariable Long id,
-            @RequestParam String status) {
 
-        return complaintService.updateStatus(id, status);
+    @GetMapping("/user/{userId}")
+    public List<Complaint> getComplaintsByUser(
+            @PathVariable Long userId,
+            @RequestHeader("X-SESSION-TOKEN") String token) {
+
+        if (token == null || token.isBlank()) {
+            throw new RuntimeException("Invalid session");
+        }
+
+        User loggedUser = userService.getUserByToken(token);
+
+        // SECURITY: user can only see own complaints
+        if (!loggedUser.getId().equals(userId)) {
+            throw new RuntimeException("Unauthorized access");
+        }
+
+        return complaintService.getComplaintsByUser(loggedUser);
     }
-    
-    // ADMIN: Get complaints by status
+
+
+    // ================= STATUS =================
+
+    @PutMapping("/update-status/{id}")
+    public Complaint updateStatus(
+            @PathVariable Long id,
+            @RequestParam String status,
+            @RequestParam String adminName) {
+
+        return complaintService.updateStatus(id, status, adminName);
+    }
+
     @GetMapping("/status/{status}")
     public List<Complaint> getComplaintsByStatus(@PathVariable String status) {
         return complaintService.getComplaintsByStatus(status);
     }
-    
-    
-
-
-
 }
